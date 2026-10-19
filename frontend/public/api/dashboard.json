@@ -1,0 +1,88 @@
+{
+  "service": {
+    "name": "checkout-service",
+    "initials": "CG",
+    "health": "healthy (12 pods)",
+    "release": "v2.18.4",
+    "url": "https://checkout-service.devflow.mesh",
+    "cluster": "cluster-us-east-1"
+  },
+  "metrics": [
+    {
+      "label": "Current Traffic",
+      "value": "3,480 req/s",
+      "hint": "+12% vs last hour",
+      "hintIcon": "trending_up",
+      "hintTone": "success"
+    },
+    {
+      "label": "Latency p99",
+      "value": "42.8 ms",
+      "hint": "SLA threshold: <100ms",
+      "hintIcon": "check",
+      "hintTone": "success"
+    },
+    {
+      "label": "HTTP Error Rate",
+      "value": "0.002%",
+      "valueTone": "success",
+      "hint": "14 errors in 700k req"
+    },
+    {
+      "label": "Active Pod Replicas",
+      "value": "12 Nodes",
+      "hint": "Target threshold: 70% CPU"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "pod-restart",
+      "tone": "warning",
+      "icon": "warning",
+      "title": "Pod Restart Notification (Warning)",
+      "message": "Replica `checkout-pod-7b89f-k2l9` restarted 3 minutes ago due to SIGKILL (OOM Killer threshold breached at 512MiB). Consider increasing the memory limit or investigating memory leak in worker goroutine.",
+      "actionLabel": "View Crash Dump",
+      "actionTarget": "job"
+    }
+  ],
+  "resources": [
+    { "label": "Aggregate Cluster CPU (12 Pods)", "value": "4.8 / 12.0 Cores (40%)", "percent": 40, "tone": "secondary" },
+    { "label": "Aggregate Memory Allocation", "value": "7.2 / 10.0 GiB (72%)", "percent": 72, "tone": "warning" },
+    { "label": "Egress Bandwidth Quota", "value": "120 Mbps / 1000 Mbps (12%)", "percent": 12, "tone": "success" }
+  ],
+  "replicas": {
+    "current": 12,
+    "min": 1,
+    "max": 64
+  },
+  "executions": [
+    {
+      "run": 42,
+      "latest": true,
+      "message": "feat: handle idempotency key",
+      "commit": "e4f81c9",
+      "status": "success",
+      "duration": "2m 14s",
+      "finished": "14m ago"
+    },
+    {
+      "run": 41,
+      "latest": false,
+      "message": "fix: stripe webhook signature verify",
+      "commit": "b201f9a",
+      "status": "success",
+      "duration": "1m 58s",
+      "finished": "2h ago"
+    },
+    {
+      "run": 40,
+      "latest": false,
+      "message": "refactor: database connection pool",
+      "commit": "a89b021",
+      "status": "failed",
+      "statusLabel": "Failed (Lint)",
+      "duration": "42s",
+      "finished": "5h ago"
+    }
+  ]
+}

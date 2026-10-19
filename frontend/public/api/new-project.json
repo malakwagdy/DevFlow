@@ -1,0 +1,37 @@
+{
+  "defaults": {
+    "name": "auth-gateway-service",
+    "domainSuffix": ".devflow.mesh",
+    "framework": "go",
+    "entrypoint": "package main\n\nimport (\n    \"fmt\"\n    \"net/http\"\n)\n\nfunc main() {\n    http.HandleFunc(\"/healthz\", func(w http.ResponseWriter, r *http.Request) {\n        fmt.Fprintf(w, `{\"status\":\"ok\",\"version\":\"1.0.0\"}`)\n    })\n    http.ListenAndServe(\":8080\", nil)\n}"
+  },
+  "environments": [
+    { "value": "production", "label": "Production (prod-vpc-green)" },
+    { "value": "staging", "label": "Staging (stage-vpc-blue)" },
+    { "value": "preview", "label": "Ephemeral Preview Cluster" }
+  ],
+  "repositories": [
+    { "value": "acme-corp/auth-gateway-engine", "label": "acme-corp/auth-gateway-engine (Active)" },
+    { "value": "acme-corp/checkout-frontend", "label": "acme-corp/checkout-frontend" },
+    { "value": "acme-corp/notification-broker", "label": "acme-corp/notification-broker" }
+  ],
+  "branches": ["main", "release/v2.1", "develop"],
+  "frameworks": [
+    { "id": "go", "name": "Go 1.22", "description": "Multi-stage Alpine" },
+    { "id": "node", "name": "Node.js 20", "description": "pnpm / npm / yarn" },
+    { "id": "python", "name": "Python 3.11", "description": "Poetry / Pipenv" },
+    { "id": "oci", "name": "Custom OCI", "description": "Raw Dockerfile" }
+  ],
+  "frameworkNotice": "Pipeline Preview Notice: Auto-selected minimal buildpack with distroless final stage to minimize vulnerability surface.",
+  "modules": [
+    { "id": "postgres", "name": "PostgreSQL 16", "description": "Primary DB with pooled SSL conn", "enabled": true },
+    { "id": "redis", "name": "Redis Cache", "description": "In-memory TTL session store", "enabled": true },
+    { "id": "rabbitmq", "name": "RabbitMQ Bus", "description": "AMQP worker exchange", "enabled": false },
+    { "id": "s3", "name": "S3 Storage", "description": "Object storage endpoint", "enabled": true },
+    { "id": "monitoring", "name": "Monitoring Node", "description": "Prometheus metrics export", "enabled": true },
+    { "id": "secrets", "name": "Env Secrets Vault", "description": "Encrypted key injection", "enabled": true }
+  ],
+  "stages": ["Checkout", "Build", "Test", "Security scan", "Package", "Deploy"],
+  "pipelineScript": "pipeline {\n  agent { docker { image 'golang:1.22-alpine' } }\n  stages {\n    stage('Checkout') {\n      steps { git branch: 'main', url: 'https://github.com/acme/auth-gw' }\n    }\n    stage('Security Scan') {\n      steps { sh 'trivy fs --severity HIGH,CRITICAL .' }\n    }\n    stage('Test') {\n      steps { sh 'go test -v -race ./...' }\n    }\n    stage('Hermetic Package') {\n      steps { sh 'docker build -t app:${BUILD_NUMBER} .' }\n    }\n    stage('Deploy') {\n      steps { devflowDeploy canaryRatio: 0.1, autoRollback: true }\n    }\n  }\n}",
+  "estimatedFirstBuild": "1m 45s"
+}

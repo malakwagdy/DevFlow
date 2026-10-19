@@ -1,0 +1,51 @@
+{
+  "job": {
+    "id": 42,
+    "service": "checkout-service",
+    "status": "passing",
+    "title": "Merge pull request #114 from dev/stripe-idempotency",
+    "meta": [
+      { "label": "Commit", "value": "e4f81c9" },
+      { "label": "Branch", "value": "main" },
+      { "label": "Duration", "value": "2m 14s" },
+      { "label": "Runner", "value": "runner-m2-metal-04" }
+    ],
+    "logFileName": "job-42.log"
+  },
+  "stageSummary": "5 / 5 Stages Completed",
+  "stages": [
+    { "name": "1. Checkout", "meta": "8.2s · OK", "icon": "check_circle" },
+    { "name": "2. Build", "meta": "54.1s · OK", "icon": "check_circle" },
+    { "name": "3. Test", "meta": "41.3s · 48 pass", "icon": "check_circle" },
+    { "name": "4. Security Scan", "meta": "18.4s · 0 vuln", "icon": "security" },
+    { "name": "5. Deploy", "meta": "12.0s · Ingress Live", "icon": "rocket_launch" }
+  ],
+  "tabs": ["Console Output", "Stage Artifacts (4)", "Commit Diff", "Pipeline Script (YAML)"],
+  "logFilters": ["All", "Checkout", "Build", "Test", "Deploy"],
+  "logs": [
+    { "time": "00:00:01", "stage": "Setup", "tone": "muted", "text": "➔ Initiating DevFlow Pipeline Execution Agent v2.4.1 (job-token: df_tok_84f9)" },
+    { "time": "00:00:02", "stage": "Setup", "tone": "muted", "text": "➔ Assigned isolated sandbox worker: runner-m2-metal-04.us-east-1a" },
+    { "time": "00:00:03", "stage": "Setup", "tone": "muted", "text": "➔ Authenticating Git credentials for acme-corp/checkout-service..." },
+    { "time": "00:00:04", "stage": "Checkout", "tone": "default", "tag": { "label": "STAGE [Checkout]", "tone": "info" }, "text": ": Fetching origin/main at commit e4f81c9 (depth: 1)" },
+    { "time": "00:00:08", "stage": "Checkout", "tone": "muted", "text": "➔ Checkout completed in 8.243s. 142 files ingested." },
+    { "time": "00:00:09", "stage": "Build", "tone": "default", "tag": { "label": "STAGE [Build]", "tone": "info" }, "text": ": Detected Go workspace. Reading go.mod (go 1.22.1)" },
+    { "time": "00:00:12", "stage": "Build", "tone": "muted", "text": "➔ Fetching cached modules from s3://devflow-build-cache/acme-corp/go/" },
+    { "time": "00:00:18", "stage": "Build", "tone": "success", "text": "➔ Cache HIT for 94 Go dependencies (saved ~48s download time)" },
+    { "time": "00:00:22", "stage": "Build", "tone": "default", "text": "➔ Compiling static binary: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags=\"-s -w\"" },
+    { "time": "00:01:03", "stage": "Build", "tone": "default", "text": "➔ Hermetic binary built: bin/checkout-server (size: 24.8MB)" },
+    { "time": "00:01:04", "stage": "Test", "tone": "default", "tag": { "label": "STAGE [Test]", "tone": "info" }, "text": ": Executing 'go test -v -race ./pkg/...'" },
+    { "time": "00:01:10", "stage": "Test", "tone": "default", "text": "=== RUN   TestCalculateCartTotalWithIdempotency" },
+    { "time": "00:01:12", "stage": "Test", "tone": "success", "text": "--- PASS:  TestCalculateCartTotalWithIdempotency (0.12s)" },
+    { "time": "00:01:15", "stage": "Test", "tone": "default", "text": "=== RUN   TestStripeWebhookPayloadVerification" },
+    { "time": "00:01:16", "stage": "Test", "tone": "success", "text": "--- PASS:  TestStripeWebhookPayloadVerification (0.04s)" },
+    { "time": "00:01:25", "stage": "Test", "tone": "warning", "text": "[WARN] TestDatabaseSlowQueryMock: query execution took 89ms (threshold 75ms)" },
+    { "time": "00:01:45", "stage": "Test", "tone": "success", "text": "➔ 48 test suites passed, 0 failures, 0 skipped." },
+    { "time": "00:01:46", "stage": "Security Scan", "tone": "default", "tag": { "label": "STAGE [Security Scan]", "tone": "info" }, "text": ": Running Trivy CVE analyzer across container layers..." },
+    { "time": "00:02:04", "stage": "Security Scan", "tone": "success", "text": "➔ Security Analysis: 0 CRITICAL, 0 HIGH, 0 MEDIUM vulnerabilities detected." },
+    { "time": "00:02:05", "stage": "Deploy", "tone": "default", "tag": { "label": "STAGE [Deploy]", "tone": "info" }, "text": ": Synthesizing Blue/Green deployment to prod-vpc-green" },
+    { "time": "00:02:10", "stage": "Deploy", "tone": "default", "text": "➔ Provisioning 12 container replicas with digest sha256:7c9e102f..." },
+    { "time": "00:02:14", "stage": "Deploy", "tone": "success", "text": "➔ Health probe /healthz returned 200 OK across all 12 pods." },
+    { "time": "00:02:14", "stage": "Deploy", "tone": "success", "text": "➔ Ingress route swapped. Live traffic now serving from commit e4f81c9." },
+    { "time": "00:02:14", "stage": "Deploy", "tone": "final", "tag": { "label": "SUCCESS:", "tone": "success" }, "text": " Pipeline execution finished cleanly in 2m 14s (Exit Code 0)." }
+  ]
+}

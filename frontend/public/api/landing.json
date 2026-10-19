@@ -1,0 +1,206 @@
+{
+  "hero": {
+    "badge": "Autonomous Continuous Delivery Engine 2.4",
+    "title": "From your code to a live URL, without writing the pipeline yourself.",
+    "subtitle": "Architectural clarity meets production rigor. Connect your repository, choose your runtime, and DevFlow compiles isolated container builds, health-checks, SSL routes, and auto-scaling telemetry in seconds.",
+    "primaryCta": "Deploy Repository Now",
+    "secondaryCta": "Explore Interactive Demo"
+  },
+  "preview": {
+    "path": "devflow-mesh // production-cluster // service/payments-api",
+    "liveLabel": "LIVE SYNC ACTIVE",
+    "stats": [
+      {
+        "label": "Active Release",
+        "value": "v2.18.4 (commit 7a9bf1c)",
+        "valueFormat": "code",
+        "valueTone": "primary",
+        "hint": "Passing all 48 test suites"
+      },
+      {
+        "label": "Global Latency (p99)",
+        "value": "42 ms",
+        "hint": "↓ 14ms from previous rollout",
+        "hintTone": "tertiary"
+      },
+      {
+        "label": "Pod Auto-Scale",
+        "value": "12 / 12 Pods",
+        "hint": "Capacity utilization 48%"
+      },
+      {
+        "label": "Pipeline Health",
+        "value": "100% Passing",
+        "valueTone": "tertiary",
+        "hint": "Avg run: 2m 14s"
+      }
+    ],
+    "stages": [
+      { "name": "Checkout repo", "duration": "8s", "status": "done" },
+      { "name": "Hermetic Build", "duration": "54s", "status": "done" },
+      { "name": "Security & Lint", "duration": "19s", "status": "done" },
+      { "name": "Blue/Green Deploy", "duration": "31s...", "status": "running" }
+    ],
+    "logsLinkLabel": "Inspect execution logs"
+  },
+  "howItWorks": {
+    "eyebrow": "Frictionless Ingestion",
+    "title": "Engineered for immediate velocity",
+    "description": "Zero DSL syntax to learn. DevFlow synthesizes your build topology from your code alone.",
+    "steps": [
+      {
+        "number": "01 / DISCOVERY",
+        "icon": "link",
+        "title": "Connect GitHub",
+        "description": "OAuth authorization detects branch heads, PR webhooks, and monorepo workspaces instantly."
+      },
+      {
+        "number": "02 / SYNTHESIS",
+        "icon": "auto_fix_high",
+        "title": "Auto-Detect Stack",
+        "description": "DevFlow scans package manifests, Go modules, or Dockerfiles to inject sensible build stages."
+      },
+      {
+        "number": "03 / ISOLATION",
+        "icon": "memory",
+        "title": "Sandboxed Build",
+        "description": "Hermetic microVM runners build OCI images, execute security gates, and generate SBOM artifacts."
+      },
+      {
+        "number": "04 / EDGE INGRESS",
+        "icon": "public",
+        "title": "Live URL & TLS",
+        "description": "Instant custom domain routing with automatic Let's Encrypt certificates and edge DDoS defense."
+      }
+    ]
+  },
+  "capabilities": {
+    "eyebrow": "Core Infrastructure",
+    "title": "A unified control plane for cloud workloads",
+    "items": [
+      {
+        "id": "pipelines",
+        "icon": "conversion_path",
+        "iconTone": "primary",
+        "tag": "Zero YAML Mode",
+        "title": "Automated Build Pipelines",
+        "description": "No fragile Jenkinsfiles or runaway bash scripts. Multi-stage compilation happens automatically with layer caching for Node, Go, Rust, and Python.",
+        "footer": {
+          "type": "code",
+          "text": "$ devflow detect --manifest=Cargo.toml -> inferred Rust 1.77 musl target"
+        }
+      },
+      {
+        "id": "addons",
+        "icon": "dataset",
+        "iconTone": "secondary",
+        "tag": "Managed Attachments",
+        "title": "One-Click Stateful Add-ons",
+        "description": "Attach PostgreSQL databases, Redis cache clusters, and S3-compatible bucket stores with auto-injected connection credentials and SSL tunnels.",
+        "footer": {
+          "type": "chips",
+          "items": ["PostgreSQL 16", "Redis 7.2", "RabbitMQ", "MinIO S3"]
+        }
+      },
+      {
+        "id": "secrets",
+        "icon": "security",
+        "iconTone": "tertiary",
+        "tag": "Zero-Trust",
+        "title": "Isolated Secrets & Edge Enclaves",
+        "description": "Environment variables are encrypted at rest with hardware-backed keys. Ephemeral preview branch environments deploy with separate sandboxed secrets.",
+        "footer": {
+          "type": "note",
+          "icon": "lock",
+          "text": "AES-256-GCM sealed per tenant workspace"
+        }
+      },
+      {
+        "id": "observability",
+        "icon": "monitoring",
+        "iconTone": "primary",
+        "tag": "Real-Time Streams",
+        "title": "Observability & Replica Scaler",
+        "description": "Live tailing stdout/stderr streams, pod memory alerts, HTTP response distributions, and interactive horizontal pod autoscale steppers.",
+        "footer": {
+          "type": "stats",
+          "left": "p95 response: 24ms",
+          "right": "99.992% uptime"
+        }
+      }
+    ]
+  },
+  "tiers": {
+    "eyebrow": "Tailored Scale",
+    "title": "Solitary Hackers to Global Fleets",
+    "items": [
+      {
+        "id": "individual",
+        "eyebrow": "Individual Tier",
+        "title": "Autonomous Engineers",
+        "price": "$0",
+        "priceNote": "/ free forever",
+        "featured": false,
+        "features": [
+          "Up to 5 live web services & static sites",
+          "Automated Git branch preview builds",
+          "Community shared runner pool",
+          "Single Postgres / Redis dev instance",
+          "3-day build log retention"
+        ],
+        "cta": "Start with Personal Account"
+      },
+      {
+        "id": "team",
+        "eyebrow": "Team & Enterprise",
+        "title": "Engineering Teams",
+        "price": "$49",
+        "priceNote": "/ seat / mo",
+        "featured": true,
+        "badge": "Recommended",
+        "features": [
+          "Unlimited services & VPC peering",
+          "Dedicated Bare-Metal M2 build executors",
+          "SAML/SSO with Okta & Google Workspace",
+          "Granular RBAC, audit logs & approval gates",
+          "90-day interactive log & metric retention"
+        ],
+        "cta": "Setup Company Workspace"
+      }
+    ]
+  },
+  "faq": {
+    "eyebrow": "Frequently Asked Questions",
+    "title": "Clarity before commitment",
+    "items": [
+      {
+        "id": "dockerfile",
+        "question": "Do I need to check in a Dockerfile or YAML config file?",
+        "answer": "No. DevFlow utilizes Cloud Native Buildpacks that infer runtime dependencies, compiler toolchains, and launch binaries automatically. If you already maintain a custom Dockerfile or custom Jenkinsfile, DevFlow respects it automatically.",
+        "defaultOpen": true
+      },
+      {
+        "id": "own-infra",
+        "question": "Can I run DevFlow on my own AWS or GCP infrastructure?",
+        "answer": "Yes. Through our DevFlow Agent daemon, you can connect your existing EKS, GKE, or bare-metal Kubernetes clusters to use DevFlow as a hosted control plane while workloads stay inside your compliance boundary.",
+        "defaultOpen": true
+      },
+      {
+        "id": "zero-downtime",
+        "question": "How are zero-downtime rolling deploys handled?",
+        "answer": "Every deploy provisions a parallel blue container instance. Ingress traffic is only cut over once synthetic TCP/HTTP readiness probes succeed. If a runtime panic occurs on boot, the previous stable deployment remains active.",
+        "defaultOpen": true
+      }
+    ]
+  },
+  "cta": {
+    "title": "Ship your first container in under 3 minutes",
+    "description": "No credit card required. Connect GitHub and deploy right now.",
+    "button": "Create New Project"
+  },
+  "footer": {
+    "brand": "DevFlow Platform",
+    "copyright": "© 2025 DevFlow Systems, Inc. All rights reserved.",
+    "links": ["Status: All Systems Operational", "Security & SOC2", "API Reference"]
+  }
+}

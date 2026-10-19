@@ -1,0 +1,74 @@
+{
+  "filters": {
+    "statuses": [
+      { "value": "all", "label": "All Statuses" },
+      { "value": "running", "label": "Running" },
+      { "value": "deploying", "label": "Deploying" },
+      { "value": "failed", "label": "Failed" },
+      { "value": "stopped", "label": "Stopped" }
+    ],
+    "frameworks": [
+      { "value": "all", "label": "All Frameworks" },
+      { "value": "node", "label": "Node.js" },
+      { "value": "go", "label": "Go" },
+      { "value": "python", "label": "Python" },
+      { "value": "docker", "label": "Docker" }
+    ]
+  },
+  "projects": [
+    {
+      "id": "checkout-service",
+      "name": "checkout-service",
+      "branch": "main",
+      "commit": "e4f81c9",
+      "framework": "Go 1.22",
+      "frameworkFamily": "go",
+      "status": "running",
+      "url": "https://chk-prod.devflow.mesh",
+      "lastDeployed": "14 mins ago",
+      "target": "dashboard",
+      "action": { "label": "Manage", "target": "dashboard", "tone": "primary" }
+    },
+    {
+      "id": "payments-worker",
+      "name": "payments-worker",
+      "branch": "feat/stripe-v4",
+      "commit": "9b2a10c",
+      "framework": "Node.js 20",
+      "frameworkFamily": "node",
+      "status": "deploying",
+      "url": "https://pay-worker.devflow.mesh",
+      "lastDeployed": "In flight (2m 10s)",
+      "target": "job",
+      "action": { "label": "View Logs", "target": "job", "tone": "primary" }
+    },
+    {
+      "id": "ml-recommend-engine",
+      "name": "ml-recommend-engine",
+      "branch": "release-1.4",
+      "commit": "c004a8f",
+      "framework": "Python 3.11",
+      "frameworkFamily": "python",
+      "status": "failed",
+      "url": null,
+      "urlPlaceholder": "No ingress bound",
+      "lastDeployed": "3 hours ago",
+      "target": "job",
+      "action": { "label": "Diagnosis", "target": "job", "tone": "error" }
+    },
+    {
+      "id": "legacy-catalog-cron",
+      "name": "legacy-catalog-cron",
+      "branch": "archived",
+      "commit": "7011d88",
+      "framework": "Docker",
+      "frameworkFamily": "docker",
+      "status": "stopped",
+      "url": null,
+      "urlPlaceholder": "Offline",
+      "lastDeployed": "12 days ago",
+      "target": "dashboard",
+      "action": { "label": "Reactivate", "target": "dashboard", "tone": "muted" }
+    }
+  ]
+}

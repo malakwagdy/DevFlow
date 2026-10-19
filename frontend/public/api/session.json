@@ -1,0 +1,13 @@
+{
+  "user": {
+    "name": "Alex Vance",
+    "initials": "AV",
+    "email": "alex@acme.corp"
+  },
+  "workspace": {
+    "slug": "acme-corp",
+    "name": "Acme Production",
+    "initials": "AP",
+    "cluster": "cluster-us-east-1"
+  }
+}
