@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from cryptography.fernet import Fernet
 from pydantic import Field, field_validator
@@ -27,10 +28,30 @@ class Settings(BaseSettings):
     github_redirect_uri: str = "http://localhost:8000/github/callback"
     github_token_encryption_key: str | None = None
 
+    # Emails (verification, password reset). "console" logs them instead of
+    # sending, for local development; "smtp" sends through the server below.
+    email_backend: Literal["console", "smtp"] = "console"
+    email_from: str = "DevFlow <no-reply@devflow.local>"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    # STARTTLS on port 587 (most providers); set false only for a local test server.
+    smtp_starttls: bool = True
+
+    email_verification_expire_hours: int = 24
+    password_reset_expire_minutes: int = 30
+
+    # Off only for load tests; the limits themselves live in app/core/rate_limit.py.
+    rate_limit_enabled: bool = True
+
     @field_validator(
         "github_client_id",
         "github_client_secret",
         "github_token_encryption_key",
+        "smtp_host",
+        "smtp_username",
+        "smtp_password",
         mode="before",
     )
     @classmethod

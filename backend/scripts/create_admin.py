@@ -8,6 +8,7 @@ The password is prompted for, so it never ends up in shell history.
 import argparse
 import asyncio
 import getpass
+from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,6 +41,8 @@ async def create_admin(
             hashed_password=hash_password(password),
             full_name=full_name.strip(),
             role=UserRole.admin,
+            # Created by whoever runs the server, so the address is trusted.
+            email_verified_at=datetime.now(timezone.utc),
         )
     )
 

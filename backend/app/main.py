@@ -9,6 +9,8 @@ from app.api.auth import router as auth_router
 from app.api.github import router as github_router
 from app.api.health import router as health_router
 from app.api.projects import router as projects_router
+from app.api.session import router as session_router
+from app.api.users import router as users_router
 from app.core.config import get_settings
 from app.core.database import engine
 from app.core.exceptions import AppError, InvalidTokenError, NotAuthenticatedError
@@ -35,18 +37,20 @@ def create_app() -> FastAPI:
     application.include_router(auth_router)
     application.include_router(github_router)
     application.include_router(projects_router)
+    application.include_router(session_router)
+    application.include_router(users_router)
     application.add_exception_handler(AppError, _app_error_handler)
     return application
 
 
 async def _app_error_handler(_request: Request, exc: AppError) -> JSONResponse:
-    headers = None
+    headers = dict(exc.headers or {})
     if isinstance(exc, (InvalidTokenError, NotAuthenticatedError)):
-        headers = {"WWW-Authenticate": "Bearer"}
+        headers["WWW-Authenticate"] = "Bearer"
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
-        headers=headers,
+        headers=headers or None,
     )
 
 

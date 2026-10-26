@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_oauth_state, decrypt_secret
 from app.models.github_connection import GitHubConnection
+from app.schemas.github import validate_branch_name
 from tests.conftest import auth_header, connect_github, redirect_params, register_user
 from tests.fakes import FakeGitHubClient, make_repo
 
@@ -342,6 +343,140 @@ async def test_repos_pagination(
     assert len(first.json()["repositories"]) == 2
     assert second.json()["has_next"] is False
     assert len(second.json()["repositories"]) == 1
+
+
+# --- branches -------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_branches_lists_repo_branches_with_default(
+    client: AsyncClient,
+    fake_github: FakeGitHubClient,
+) -> None:
+    fake_github.repos = [make_repo(1, "octocat/hello-world")]
+    fake_github.branches = {"octocat/hello-world": ["main", "develop", "release/v2.1"]}
+    token = await register_user(client)
+    await connect_github(client, fake_github, token)
+
+    response = await client.get(
+        "/github/repos/octocat/hello-world/branches", headers=auth_header(token)
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["default_branch"] == "main"
+    assert [branch["name"] for branch in body["branches"]] == [
+        "main",
+        "develop",
+        "release/v2.1",
+    ]
+    assert body["has_next"] is False
+
+
+@pytest.mark.asyncio
+async def test_branches_pagination(
+    client: AsyncClient,
+    fake_github: FakeGitHubClient,
+) -> None:
+    fake_github.repos = [make_repo(1, "octocat/hello-world")]
+    fake_github.branches = {"octocat/hello-world": ["main", "b1", "b2"]}
+    token = await register_user(client)
+    await connect_github(client, fake_github, token)
+
+    url = "/github/repos/octocat/hello-world/branches"
+    first = await client.get(url, params={"per_page": 2}, headers=auth_header(token))
+    second = await client.get(
+        url, params={"per_page": 2, "page": 2}, headers=auth_header(token)
+    )
+    assert [b["name"] for b in first.json()["branches"]] == ["main", "b1"]
+    assert first.json()["has_next"] is True
+    assert [b["name"] for b in second.json()["branches"]] == ["b2"]
+    assert second.json()["has_next"] is False
+
+
+@pytest.mark.asyncio
+async def test_branches_requires_connection(
+    client: AsyncClient,
+    fake_github: FakeGitHubClient,
+) -> None:
+    token = await register_user(client)
+    response = await client.get(
+        "/github/repos/octocat/hello-world/branches", headers=auth_header(token)
+    )
+    assert response.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_branches_of_unknown_repo_returns_422(
+    client: AsyncClient,
+    fake_github: FakeGitHubClient,
+) -> None:
+    token = await register_user(client)
+    await connect_github(client, fake_github, token)
+    response = await client.get(
+        "/github/repos/octocat/missing/branches", headers=auth_header(token)
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_public_access_cannot_list_private_repo_branches(
+    client: AsyncClient,
+    fake_github: FakeGitHubClient,
+) -> None:
+    fake_github.repos = [make_repo(2, "octocat/secret-app", private=True)]
+    token = await register_user(client)
+    await connect_github(client, fake_github, token, access="public")
+    response = await client.get(
+        "/github/repos/octocat/secret-app/branches", headers=auth_header(token)
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("path", ["octocat/..", "-bad/repo", "octocat/re%20po"])
+async def test_branches_rejects_malformed_repo_names(
+    client: AsyncClient,
+    fake_github: FakeGitHubClient,
+    path: str,
+) -> None:
+    token = await register_user(client)
+    await connect_github(client, fake_github, token)
+    response = await client.get(f"/github/repos/{path}/branches", headers=auth_header(token))
+    # 404 when the URL no longer matches the route at all, 422 when a part is invalid.
+    assert response.status_code in (404, 422)
+
+
+@pytest.mark.parametrize(
+    "name", ["main", "release/v2.1", "feature/login-page", "v1.0", "user+fix"]
+)
+def test_valid_branch_names(name: str) -> None:
+    assert validate_branch_name(name) == name
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "",
+        "../main",
+        "a..b",
+        "/main",
+        "main/",
+        "a//b",
+        "-main",
+        ".hidden",
+        "a/.b",
+        "x.lock",
+        "has space",
+        "a~b",
+        "a^b",
+        "a:b",
+        "a\\b",
+        "a" * 256,
+    ],
+)
+def test_invalid_branch_names(name: str) -> None:
+    with pytest.raises(ValueError):
+        validate_branch_name(name)
 
 
 @pytest.mark.asyncio

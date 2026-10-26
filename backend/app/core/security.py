@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -21,6 +23,8 @@ _DUMMY_HASH = _password_hasher.hash("devflow-timing-equalizer")
 ACCESS_TOKEN_TYPE = "access"
 OAUTH_STATE_TOKEN_TYPE = "github_oauth_state"
 OAUTH_STATE_EXPIRE_MINUTES = 10
+EMAIL_VERIFICATION_TOKEN_TYPE = "email_verification"
+PASSWORD_RESET_TOKEN_TYPE = "password_reset"
 
 
 class SecretDecryptionError(Exception):
@@ -66,6 +70,52 @@ def create_oauth_state(user_id: str, access: str) -> str:
 
 def decode_oauth_state(state: str) -> dict[str, Any]:
     return _decode(state, OAUTH_STATE_TOKEN_TYPE)
+
+
+def create_email_verification_token(user_id: str, email: str) -> str:
+    """Link token proving the user can read `email`. It carries the address, so
+    a link sent before an email change can't verify the new address."""
+    lifetime = timedelta(hours=get_settings().email_verification_expire_hours)
+    claims = {"sub": user_id, "email": email, "type": EMAIL_VERIFICATION_TOKEN_TYPE}
+    return _encode(claims, lifetime)
+
+
+def decode_email_verification_token(token: str) -> dict[str, Any]:
+    return _decode(token, EMAIL_VERIFICATION_TOKEN_TYPE)
+
+
+def create_password_reset_token(user_id: str, email: str, hashed_password: str) -> str:
+    """Single-use without a database table: it embeds a fingerprint of the
+    current password hash, so it stops working once the password changes."""
+    lifetime = timedelta(minutes=get_settings().password_reset_expire_minutes)
+    claims = {
+        "sub": user_id,
+        "email": email,
+        "pwd": password_fingerprint(hashed_password),
+        "type": PASSWORD_RESET_TOKEN_TYPE,
+    }
+    return _encode(claims, lifetime)
+
+
+def decode_password_reset_token(token: str) -> dict[str, Any]:
+    return _decode(token, PASSWORD_RESET_TOKEN_TYPE)
+
+
+def password_fingerprint(hashed_password: str) -> str:
+    # Keyed, so the (readable) token reveals nothing usable about the hash.
+    key = get_settings().jwt_secret.encode()
+    return hmac.new(key, hashed_password.encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def issued_before(payload: dict[str, Any], moment: datetime | None) -> bool:
+    """True if the token was issued before `moment` (e.g. a password change).
+
+    `iat` has whole-second precision, so compare against the start of that second:
+    a token issued right after the change, in the same second, stays valid.
+    """
+    if moment is None:
+        return False
+    return int(payload["iat"]) < int(moment.timestamp())
 
 
 def encrypt_secret(plaintext: str) -> str:

@@ -54,8 +54,10 @@ async def update_project(
     payload: ProjectUpdate,
     current_user: CurrentUserDep,
     projects: ProjectServiceDep,
+    github: GitHubServiceDep,
 ) -> Project:
-    return await projects.update(current_user, project_id, payload)
+    """Changing `branch` checks on GitHub that it exists."""
+    return await projects.update(current_user, project_id, payload, github)
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)

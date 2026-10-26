@@ -44,6 +44,10 @@ class User(UUIDPrimaryKeyMixin, Base):
         SAEnum(CompanyRole, name="company_role"),
     )
     is_active: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
+    # Null until the user clicks the link we email them; reset when the email changes.
+    email_verified_at: Mapped[datetime | None]
+    # Access tokens issued before this are rejected (sign out everywhere).
+    password_changed_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(),
@@ -56,3 +60,7 @@ class User(UUIDPrimaryKeyMixin, Base):
         back_populates="members",
     )
     owned_projects: Mapped[list["Project"]] = relationship(back_populates="owner")
+
+    @property
+    def email_verified(self) -> bool:
+        return self.email_verified_at is not None

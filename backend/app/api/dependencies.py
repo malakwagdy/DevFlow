@@ -2,7 +2,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import BackgroundTasks, Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,11 +15,13 @@ from app.core.exceptions import (
     NotAuthenticatedError,
     PermissionDeniedError,
 )
-from app.core.security import decode_access_token
+from app.core.security import decode_access_token, issued_before
+from app.integrations.email import ConsoleEmailSender, EmailSender, SmtpEmailSender
 from app.integrations.github import GitHubClient
 from app.models.user import User, UserRole
 from app.repositories.github_connection_repository import GitHubConnectionRepository
 from app.repositories.user_repository import UserRepository
+from app.services.account_email_service import AccountEmailService
 from app.services.github_service import GitHubService
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -46,6 +48,9 @@ async def get_current_user(
 
     user = await UserRepository(session).get_by_id(user_id)
     if user is None:
+        raise InvalidTokenError()
+    # Changing or resetting the password signs out every earlier token.
+    if issued_before(payload, user.password_changed_at):
         raise InvalidTokenError()
     if not user.is_active:
         raise InactiveUserError()
@@ -96,3 +101,44 @@ def get_github_service(
 
 
 GitHubServiceDep = Annotated[GitHubService, Depends(get_github_service)]
+
+
+def get_optional_github_client() -> GitHubClient | None:
+    """Like get_github_client, but None when GitHub isn't configured, for
+    features that only need GitHub if it's there (account deletion)."""
+    try:
+        return get_github_client()
+    except GitHubNotConfiguredError:
+        return None
+
+
+def get_optional_github_service(
+    session: SessionDep,
+    client: Annotated[GitHubClient | None, Depends(get_optional_github_client)],
+) -> GitHubService | None:
+    if client is None:
+        return None
+    return GitHubService(GitHubConnectionRepository(session), UserRepository(session), client)
+
+
+OptionalGitHubServiceDep = Annotated[
+    GitHubService | None, Depends(get_optional_github_service)
+]
+
+
+def get_email_sender() -> EmailSender:
+    """Overridden with a fake in tests."""
+    settings = get_settings()
+    if settings.email_backend == "smtp":
+        return SmtpEmailSender(settings)
+    return ConsoleEmailSender()
+
+
+def get_account_email_service(
+    background_tasks: BackgroundTasks,
+    sender: Annotated[EmailSender, Depends(get_email_sender)],
+) -> AccountEmailService:
+    return AccountEmailService(sender, background_tasks)
+
+
+AccountEmailServiceDep = Annotated[AccountEmailService, Depends(get_account_email_service)]

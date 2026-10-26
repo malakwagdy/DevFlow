@@ -5,6 +5,7 @@ class AppError(Exception):
     """Base error; main.py turns it into a JSON response with `status_code`."""
 
     status_code: int = 400
+    headers: dict[str, str] | None = None
 
     def __init__(self, detail: str) -> None:
         self.detail = detail
@@ -90,6 +91,13 @@ class RepositoryNotAccessibleError(AppError):
         super().__init__("Repository not found, or DevFlow does not have access to it")
 
 
+class BranchNotFoundError(AppError):
+    status_code = 422
+
+    def __init__(self) -> None:
+        super().__init__("Branch not found in this repository")
+
+
 class ProjectNotFoundError(AppError):
     status_code = 404
 
@@ -102,3 +110,49 @@ class ProjectAlreadyExistsError(AppError):
 
     def __init__(self) -> None:
         super().__init__("You already have a project for this repository")
+
+
+class EmailVerificationTokenInvalidError(AppError):
+    status_code = 400
+
+    def __init__(self) -> None:
+        super().__init__("This verification link is invalid or has expired")
+
+
+class PasswordResetTokenInvalidError(AppError):
+    status_code = 400
+
+    def __init__(self) -> None:
+        super().__init__("This password reset link is invalid, expired or already used")
+
+
+class EmailAlreadyVerifiedError(AppError):
+    status_code = 409
+
+    def __init__(self) -> None:
+        super().__init__("Email is already verified")
+
+
+class IncorrectPasswordError(AppError):
+    status_code = 403
+
+    def __init__(self) -> None:
+        super().__init__("Current password is incorrect")
+
+
+class CompanyHasOtherMembersError(AppError):
+    status_code = 409
+
+    def __init__(self) -> None:
+        super().__init__(
+            "You own a company that has other members. Transfer ownership before "
+            "deleting your account."
+        )
+
+
+class TooManyRequestsError(AppError):
+    status_code = 429
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__("Too many attempts. Please try again later.")
+        self.headers = {"Retry-After": str(retry_after_seconds)}

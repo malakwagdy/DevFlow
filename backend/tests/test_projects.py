@@ -61,6 +61,7 @@ async def test_create_project_defaults_to_repo_details(
     assert project["repo_full_name"] == "octocat/hello-world"
     assert project["repo_url"] == "https://github.com/octocat/hello-world"
     assert project["default_branch"] == "main"
+    assert project["branch"] == "main"
     assert project["is_private"] is False
     assert project["team_id"] is None
     me = await client.get("/auth/me", headers=auth_header(token))
@@ -76,6 +77,49 @@ async def test_create_project_with_custom_name_and_description(
     project = await _create(client, token, name="Website", description=None)
     assert project["name"] == "Website"
     assert project["description"] is None
+
+
+@pytest.mark.asyncio
+async def test_create_project_with_chosen_branch(
+    client: AsyncClient,
+    repos: FakeGitHubClient,
+) -> None:
+    repos.branches = {"octocat/hello-world": ["main", "release/v2.1"]}
+    token = await _connected_user(client, repos)
+    project = await _create(client, token, branch="release/v2.1")
+    assert project["branch"] == "release/v2.1"
+    assert project["default_branch"] == "main"
+
+
+@pytest.mark.asyncio
+async def test_create_project_with_unknown_branch_returns_422(
+    client: AsyncClient,
+    repos: FakeGitHubClient,
+) -> None:
+    token = await _connected_user(client, repos)
+    response = await client.post(
+        "/projects",
+        json={"repo_full_name": "octocat/hello-world", "branch": "does-not-exist"},
+        headers=auth_header(token),
+    )
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Branch not found in this repository"}
+    listed = await client.get("/projects", headers=auth_header(token))
+    assert listed.json() == []
+
+
+@pytest.mark.asyncio
+async def test_create_project_rejects_invalid_branch_name(
+    client: AsyncClient,
+    repos: FakeGitHubClient,
+) -> None:
+    token = await _connected_user(client, repos)
+    response = await client.post(
+        "/projects",
+        json={"repo_full_name": "octocat/hello-world", "branch": "../../etc"},
+        headers=auth_header(token),
+    )
+    assert response.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -301,6 +345,57 @@ async def test_update_cannot_clear_name(
     response = await client.patch(
         f"/projects/{project['id']}",
         json={"name": None},
+        headers=auth_header(token),
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_owner_can_change_branch(
+    client: AsyncClient,
+    repos: FakeGitHubClient,
+) -> None:
+    repos.branches = {"octocat/hello-world": ["main", "develop"]}
+    token = await _connected_user(client, repos)
+    project = await _create(client, token)
+
+    response = await client.patch(
+        f"/projects/{project['id']}",
+        json={"branch": "develop"},
+        headers=auth_header(token),
+    )
+    assert response.status_code == 200
+    assert response.json()["branch"] == "develop"
+
+
+@pytest.mark.asyncio
+async def test_change_to_unknown_branch_returns_422(
+    client: AsyncClient,
+    repos: FakeGitHubClient,
+) -> None:
+    token = await _connected_user(client, repos)
+    project = await _create(client, token)
+
+    response = await client.patch(
+        f"/projects/{project['id']}",
+        json={"branch": "nope"},
+        headers=auth_header(token),
+    )
+    assert response.status_code == 422
+    unchanged = await client.get(f"/projects/{project['id']}", headers=auth_header(token))
+    assert unchanged.json()["branch"] == "main"
+
+
+@pytest.mark.asyncio
+async def test_update_cannot_clear_branch(
+    client: AsyncClient,
+    repos: FakeGitHubClient,
+) -> None:
+    token = await _connected_user(client, repos)
+    project = await _create(client, token)
+    response = await client.patch(
+        f"/projects/{project['id']}",
+        json={"branch": None},
         headers=auth_header(token),
     )
     assert response.status_code == 422

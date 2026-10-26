@@ -1,7 +1,12 @@
+import re
 from datetime import datetime, timezone
+from urllib.parse import unquote
 
+from app.integrations.email import EmailMessage, EmailSender
 from app.integrations.github import (
     GitHubAuthError,
+    GitHubBranch,
+    GitHubBranchPage,
     GitHubClient,
     GitHubOAuthError,
     GitHubRepo,
@@ -45,6 +50,8 @@ class FakeGitHubClient(GitHubClient):
         self._users: dict[str, GitHubUser] = {}
         self._token_scopes: dict[str, frozenset[str]] = {}
         self.repos: list[GitHubRepo] = []
+        # Branch names per repo full_name; repos not listed have only their default branch.
+        self.branches: dict[str, list[str]] = {}
         self.invalid_tokens: set[str] = set()
         self.revoked_tokens: list[str] = []
         self.list_visibilities: list[str] = []
@@ -100,6 +107,33 @@ class FakeGitHubClient(GitHubClient):
                 return repo
         return None
 
+    async def list_branches(
+        self,
+        token: str,
+        full_name: str,
+        *,
+        page: int,
+        per_page: int,
+    ) -> GitHubBranchPage | None:
+        repo = await self.get_repo(token, full_name)
+        if repo is None:
+            return None
+        names = self._branch_names(repo)
+        start = (page - 1) * per_page
+        return GitHubBranchPage(
+            branches=[
+                GitHubBranch(name=name, protected=name == repo.default_branch)
+                for name in names[start : start + per_page]
+            ],
+            has_next=len(names) > start + per_page,
+        )
+
+    async def get_branch(self, token: str, full_name: str, branch: str) -> GitHubBranch | None:
+        repo = await self.get_repo(token, full_name)
+        if repo is None or branch not in self._branch_names(repo):
+            return None
+        return GitHubBranch(name=branch, protected=branch == repo.default_branch)
+
     async def revoke_grant(self, token: str) -> None:
         self.revoked_tokens.append(token)
 
@@ -107,5 +141,28 @@ class FakeGitHubClient(GitHubClient):
         if token in self.invalid_tokens:
             raise GitHubAuthError()
 
+    def _branch_names(self, repo: GitHubRepo) -> list[str]:
+        return self.branches.get(repo.full_name, [repo.default_branch])
+
     def _can_see(self, token: str, repo: GitHubRepo) -> bool:
         return not repo.private or "repo" in self._token_scopes.get(token, frozenset())
+
+
+class FakeEmailSender(EmailSender):
+    """Keeps sent emails in memory instead of sending them."""
+
+    def __init__(self) -> None:
+        self.sent: list[EmailMessage] = []
+
+    async def send(self, message: EmailMessage) -> None:
+        self.sent.append(message)
+
+    def to(self, address: str) -> list[EmailMessage]:
+        return [message for message in self.sent if message.to == address]
+
+
+def link_token(message: EmailMessage) -> str:
+    """The `token` query parameter of the link in an email body."""
+    match = re.search(r"[?&]token=([^\s&]+)", message.body)
+    assert match, f"no link token in email {message.subject!r}"
+    return unquote(match.group(1))

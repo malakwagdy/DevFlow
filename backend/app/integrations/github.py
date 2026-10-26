@@ -7,7 +7,7 @@ service layer's job. Tokens are never logged.
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import httpx
 
@@ -71,6 +71,22 @@ class GitHubRepo:
 @dataclass(frozen=True)
 class GitHubRepoPage:
     repos: list[GitHubRepo]
+    has_next: bool
+
+
+@dataclass(frozen=True)
+class GitHubBranch:
+    name: str
+    protected: bool
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "GitHubBranch":
+        return cls(name=data["name"], protected=data.get("protected", False))
+
+
+@dataclass(frozen=True)
+class GitHubBranchPage:
+    branches: list[GitHubBranch]
     has_next: bool
 
 
@@ -154,6 +170,44 @@ class GitHubClient:
             return None
         self._expect_ok(response)
         return GitHubRepo.from_api(response.json())
+
+    async def list_branches(
+        self,
+        token: str,
+        full_name: str,
+        *,
+        page: int,
+        per_page: int,
+    ) -> GitHubBranchPage | None:
+        """None if the repo doesn't exist or the token can't see it."""
+        response = await self._api(
+            "GET",
+            f"/repos/{full_name}/branches",
+            token=token,
+            params={"page": page, "per_page": per_page},
+        )
+        if response.status_code == 404:
+            return None
+        self._expect_ok(response)
+        return GitHubBranchPage(
+            branches=[GitHubBranch.from_api(item) for item in response.json()],
+            has_next="next" in response.links,
+        )
+
+    async def get_branch(self, token: str, full_name: str, branch: str) -> GitHubBranch | None:
+        """None if the branch (or repo) doesn't exist, or the token can't see it."""
+        response = await self._api(
+            "GET",
+            # Slashes stay as-is: GitHub expects "feature/x" literally in the path.
+            f"/repos/{full_name}/branches/{quote(branch, safe='/')}",
+            token=token,
+        )
+        # 301: the branch was renamed. Treat the old name as gone so the user
+        # picks the current one instead of us silently following it.
+        if response.status_code in (301, 404):
+            return None
+        self._expect_ok(response)
+        return GitHubBranch.from_api(response.json())
 
     async def revoke_grant(self, token: str) -> None:
         """Revoke DevFlow's whole authorization for this user (all their tokens)."""

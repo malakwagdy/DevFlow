@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 
 from app.core.config import get_settings
 from app.core.exceptions import (
+    BranchNotFoundError,
     GitHubNotConnectedError,
     GitHubReauthorizationRequiredError,
     GitHubUnavailableError,
@@ -21,6 +22,7 @@ from app.core.security import (
 )
 from app.integrations.github import (
     GitHubAuthError,
+    GitHubBranchPage,
     GitHubClient,
     GitHubError,
     GitHubRepo,
@@ -129,6 +131,12 @@ class GitHubService:
         connection = await self._require_connection(user)
         await self._revoke_and_delete(connection)
 
+    async def disconnect_if_connected(self, user: User) -> None:
+        """For account deletion: revoke on GitHub too, not just drop our copy."""
+        connection = await self._connections.get_by_user_id(user.id)
+        if connection is not None:
+            await self._revoke_and_delete(connection)
+
     # --- acting as the user on GitHub ---------------------------------------------
 
     async def list_repositories(
@@ -157,6 +165,40 @@ class GitHubService:
         if repo is None or (repo.private and connection.access is GitHubAccess.public):
             raise RepositoryNotAccessibleError()
         return repo
+
+    async def list_branches(
+        self,
+        user: User,
+        full_name: str,
+        *,
+        page: int,
+        per_page: int,
+    ) -> tuple[GitHubRepo, GitHubBranchPage]:
+        """The repo (for its default branch) and one page of its branches."""
+        # Goes through get_repository so the public/private access rule applies.
+        repo = await self.get_repository(user, full_name)
+        connection = await self._require_connection(user)
+        branches = await self._with_token(
+            connection,
+            lambda token: self._client.list_branches(
+                token, repo.full_name, page=page, per_page=per_page
+            ),
+        )
+        if branches is None:
+            raise RepositoryNotAccessibleError()
+        return repo, branches
+
+    async def ensure_branch_exists(self, user: User, repo: GitHubRepo, branch: str) -> None:
+        """`repo` must come from get_repository, which already checked access."""
+        if branch == repo.default_branch:
+            return  # GitHub just told us it exists; skip the extra call.
+        connection = await self._require_connection(user)
+        found = await self._with_token(
+            connection,
+            lambda token: self._client.get_branch(token, repo.full_name, branch),
+        )
+        if found is None:
+            raise BranchNotFoundError()
 
     # --- helpers ----------------------------------------------------------------
 

@@ -22,7 +22,10 @@ class Project(UUIDPrimaryKeyMixin, Base):
     # GitHub's numeric id survives repo renames/transfers; full_name is for display/API calls.
     github_repo_id: Mapped[int] = mapped_column(BigInteger)
     repo_full_name: Mapped[str] = mapped_column(String(255))
+    # The repo's default branch on GitHub, as of project creation.
     default_branch: Mapped[str] = mapped_column(String(255))
+    # The branch the user chose to build and deploy; pipelines will build pushes to it.
+    branch: Mapped[str] = mapped_column(String(255))
     is_private: Mapped[bool]
     owner_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"),

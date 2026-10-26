@@ -126,6 +126,16 @@ async def test_failed_register_with_company_leaves_no_company_behind(
 
 
 @pytest.mark.asyncio
+async def test_register_without_role_defaults_to_application_developer(
+    client: AsyncClient,
+) -> None:
+    payload = {key: value for key, value in REGISTER_PAYLOAD.items() if key != "role"}
+    response = await client.post("/auth/register", json=payload)
+    assert response.status_code == 201
+    assert response.json()["user"]["role"] == "application_developer"
+
+
+@pytest.mark.asyncio
 async def test_register_admin_role_is_rejected(client: AsyncClient) -> None:
     payload = {**REGISTER_PAYLOAD, "email": "admin@example.com", "role": "admin"}
     response = await client.post("/auth/register", json=payload)

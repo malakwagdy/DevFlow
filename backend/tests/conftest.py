@@ -27,11 +27,16 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_github_client
+from app.api.dependencies import (
+    get_email_sender,
+    get_github_client,
+    get_optional_github_client,
+)
+from app.core import rate_limit
 from app.core.database import SessionLocal, engine
 from app.main import app
 from app.models import Base
-from tests.fakes import FakeGitHubClient
+from tests.fakes import FakeEmailSender, FakeGitHubClient
 
 REGISTER_PAYLOAD: dict[str, str] = {
     "email": "dev@example.com",
@@ -73,8 +78,29 @@ def auth_header(token: str) -> dict[str, str]:
 def fake_github() -> Iterator[FakeGitHubClient]:
     fake = FakeGitHubClient()
     app.dependency_overrides[get_github_client] = lambda: fake
+    app.dependency_overrides[get_optional_github_client] = lambda: fake
     yield fake
     app.dependency_overrides.pop(get_github_client, None)
+    app.dependency_overrides.pop(get_optional_github_client, None)
+
+
+@pytest.fixture(autouse=True)
+def outbox() -> Iterator[FakeEmailSender]:
+    """Every test gets an empty in-memory outbox instead of real emails."""
+    fake = FakeEmailSender()
+    app.dependency_overrides[get_email_sender] = lambda: fake
+    yield fake
+    app.dependency_overrides.pop(get_email_sender, None)
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits() -> Iterator[None]:
+    """Limiters are module-level, so counts would leak between tests."""
+    for limiter in rate_limit.ALL_LIMITERS:
+        limiter.clear()
+    yield
+    for limiter in rate_limit.ALL_LIMITERS:
+        limiter.clear()
 
 
 async def register_user(
@@ -87,6 +113,38 @@ async def register_user(
     response = await client.post("/auth/register", json=payload)
     assert response.status_code == 201, response.text
     return response.json()["access_token"]
+
+
+async def user_id(client: AsyncClient, token: str) -> str:
+    response = await client.get("/auth/me", headers=auth_header(token))
+    assert response.status_code == 200, response.text
+    return response.json()["id"]
+
+
+def access_token_issued_ago(subject: str, seconds: int) -> str:
+    """An access token issued `seconds` ago, i.e. before something that just
+    happened (like a password change). Built by hand because `iat` has
+    one-second precision and tests run faster than that."""
+    from datetime import datetime, timedelta, timezone
+
+    import jwt
+
+    from app.core.config import get_settings
+    from app.core.security import ACCESS_TOKEN_TYPE
+
+    settings = get_settings()
+    issued = datetime.now(timezone.utc) - timedelta(seconds=seconds)
+    return jwt.encode(
+        {
+            "sub": subject,
+            "role": "application_developer",
+            "type": ACCESS_TOKEN_TYPE,
+            "iat": issued,
+            "exp": issued + timedelta(minutes=30),
+        },
+        settings.jwt_secret,
+        algorithm=settings.jwt_algorithm,
+    )
 
 
 async def connect_github(

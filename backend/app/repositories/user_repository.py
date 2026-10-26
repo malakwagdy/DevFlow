@@ -1,9 +1,11 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.company import Company
+from app.models.project import Project
 from app.models.user import User
 
 
@@ -29,3 +31,31 @@ class UserRepository:
         # Load server-generated columns (created_at, updated_at).
         await self._session.refresh(user)
         return user
+
+    async def save(self, user: User) -> User:
+        self._session.add(user)
+        try:
+            await self._session.commit()
+        except IntegrityError:
+            await self._session.rollback()
+            raise
+        await self._session.refresh(user)
+        return user
+
+    async def count_company_members(self, company_id: uuid.UUID) -> int:
+        return await self._session.scalar(
+            select(func.count()).select_from(User).where(User.company_id == company_id)
+        ) or 0
+
+    async def delete_account(self, user: User, *, delete_company: bool) -> None:
+        """Delete the user, their projects and (if asked) their company, in one
+        transaction. GitHub connections and team memberships cascade in the DB."""
+        company_id = user.company_id
+        await self._session.execute(delete(Project).where(Project.owner_id == user.id))
+        # A Core DELETE, not session.delete(): that would lazy-load `teams`,
+        # which async sessions can't do.
+        await self._session.execute(delete(User).where(User.id == user.id))
+        if delete_company and company_id is not None:
+            # Teams cascade with the company.
+            await self._session.execute(delete(Company).where(Company.id == company_id))
+        await self._session.commit()

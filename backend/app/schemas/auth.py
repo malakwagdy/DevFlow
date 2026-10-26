@@ -1,14 +1,17 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models.user import UserRole
-from app.schemas.user import UserResponse
+from app.schemas.user import NewPassword, UserResponse
+
+# Plenty for a signed JWT; stops megabyte-sized junk reaching the decoder.
+_MAX_LINK_TOKEN_LENGTH = 2048
 
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: NewPassword
     full_name: str = Field(min_length=1, max_length=255)
-    role: UserRole
+    role: UserRole = UserRole.application_developer
     # Optional: when given, a company is created with this user as its owner,
     # plus one default team containing the owner.
     company_name: str | None = Field(default=None, min_length=1, max_length=255)
@@ -35,3 +38,20 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(min_length=1, max_length=_MAX_LINK_TOKEN_LENGTH)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=1, max_length=_MAX_LINK_TOKEN_LENGTH)
+    new_password: NewPassword
+
+
+class MessageResponse(BaseModel):
+    detail: str

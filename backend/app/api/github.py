@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Path, Query, Response, status
 from fastapi.responses import RedirectResponse
 
 from app.api.dependencies import CurrentUserDep, GitHubServiceDep
+from app.core.exceptions import RepositoryNotAccessibleError
 from app.models.github_connection import GitHubAccess
 from app.schemas.github import (
+    GITHUB_OWNER_PATTERN,
+    GITHUB_REPO_NAME_PATTERN,
     GitHubAuthorizationUrl,
+    GitHubBranch,
+    GitHubBranchPage,
     GitHubConnectionStatus,
     GitHubRepository,
     GitHubRepositoryPage,
@@ -78,6 +83,30 @@ async def list_repositories(
     result = await github.list_repositories(current_user, page=page, per_page=per_page)
     return GitHubRepositoryPage(
         repositories=[GitHubRepository.model_validate(repo) for repo in result.repos],
+        page=page,
+        per_page=per_page,
+        has_next=result.has_next,
+    )
+
+
+@router.get("/repos/{owner}/{repo}/branches", response_model=GitHubBranchPage)
+async def list_branches(
+    current_user: CurrentUserDep,
+    github: GitHubServiceDep,
+    owner: str = Path(pattern=GITHUB_OWNER_PATTERN),
+    repo: str = Path(pattern=GITHUB_REPO_NAME_PATTERN),
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=30, ge=1, le=100),
+) -> GitHubBranchPage:
+    """Branches of one of the user's repositories, e.g. for the New Project form."""
+    if repo in {".", ".."}:
+        raise RepositoryNotAccessibleError()
+    repository, result = await github.list_branches(
+        current_user, f"{owner}/{repo}", page=page, per_page=per_page
+    )
+    return GitHubBranchPage(
+        default_branch=repository.default_branch,
+        branches=[GitHubBranch.model_validate(branch) for branch in result.branches],
         page=page,
         per_page=per_page,
         has_next=result.has_next,
