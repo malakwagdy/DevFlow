@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
+import RequireAuth from './components/layout/RequireAuth';
 import AuthPage from './pages/AuthPage';
 import DashboardPage from './pages/DashboardPage';
 import JobDetailsPage from './pages/JobDetailsPage';
@@ -12,8 +13,10 @@ export default function App() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<LandingPage />} />
-        <Route path="projects" element={<ProjectsPage />} />
-        <Route path="projects/new" element={<NewProjectPage />} />
+        <Route element={<RequireAuth />}>
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="projects/new" element={<NewProjectPage />} />
+        </Route>
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="job" element={<JobDetailsPage />} />
         <Route path="auth" element={<AuthPage />} />

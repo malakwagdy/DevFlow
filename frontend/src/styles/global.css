@@ -1440,6 +1440,42 @@ summary::-webkit-details-marker {
   white-space: nowrap;
 }
 
+/* --- User menu (top navbar avatar) ----------------------------------- */
+.user-menu {
+  position: relative;
+}
+.user-menu__trigger {
+  transition: box-shadow var(--transition-fast);
+}
+.user-menu__trigger:hover,
+.user-menu__trigger[aria-expanded='true'] {
+  box-shadow: 0 0 0 2px var(--color-surface-highest);
+}
+.user-menu__panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 50;
+  min-width: 12rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-surface-highest);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+.user-menu__name {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+.user-menu__email {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-outline);
+}
+
 /* --- Mobile bottom nav ------------------------------------------------- */
 .mobile-nav {
   position: fixed;

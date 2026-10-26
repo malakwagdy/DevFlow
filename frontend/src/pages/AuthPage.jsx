@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Page from '../components/layout/Page';
 import AsyncContent from '../components/ui/AsyncContent';
@@ -6,7 +6,8 @@ import Button from '../components/ui/Button';
 import FormField from '../components/ui/FormField';
 import Icon from '../components/ui/Icon';
 import SegmentedControl from '../components/ui/SegmentedControl';
-import { ROUTES } from '../config/navigation';
+import { REDIRECT_PARAM, ROUTES, safeRedirectPath } from '../config/navigation';
+import { useSession } from '../context/SessionContext';
 import useApi from '../hooks/useApi';
 import { api } from '../services/api';
 
@@ -19,7 +20,7 @@ function SignInForm({ credentials, submitLabel, onSubmit }) {
   return (
     <form className="form" onSubmit={onSubmit}>
       <FormField label="Work Email" htmlFor={emailId}>
-        <input id={emailId} type="email" required className="input" placeholder="alex@company.corp" defaultValue={credentials.email} />
+        <input id={emailId} name="email" type="email" required className="input" placeholder="alex@company.corp" defaultValue={credentials.email} />
       </FormField>
       <FormField
         label="Password"
@@ -30,7 +31,7 @@ function SignInForm({ credentials, submitLabel, onSubmit }) {
           </a>
         }
       >
-        <input id={passwordId} type="password" required className="input" defaultValue={credentials.password} />
+        <input id={passwordId} name="password" type="password" required className="input" defaultValue={credentials.password} />
       </FormField>
       <Button type="submit" block className="auth-card__submit">
         {submitLabel}
@@ -43,16 +44,48 @@ function SignUpForm({ placeholders, submitLabel, onSubmit }) {
   const nameId = useId();
   const emailId = useId();
   const passwordId = useId();
+  const confirmPasswordId = useId();
+  const passwordRef = useRef(null);
+  const confirmPasswordRef = useRef(null);
+
+  // Native constraint validation blocks submission and shows the browser's message while they differ.
+  const checkPasswordsMatch = () => {
+    const confirm = confirmPasswordRef.current;
+    const mismatch = confirm.value && confirm.value !== passwordRef.current.value;
+    confirm.setCustomValidity(mismatch ? 'Passwords do not match.' : '');
+  };
+
   return (
     <form className="form" onSubmit={onSubmit}>
       <FormField label="Full Name" htmlFor={nameId}>
-        <input id={nameId} type="text" required className="input" placeholder={placeholders.name} />
+        <input id={nameId} name="name" type="text" required className="input" placeholder={placeholders.name} />
       </FormField>
       <FormField label="Work Email" htmlFor={emailId}>
-        <input id={emailId} type="email" required className="input" placeholder={placeholders.email} />
+        <input id={emailId} name="email" type="email" required className="input" placeholder={placeholders.email} />
       </FormField>
       <FormField label="Password" htmlFor={passwordId}>
-        <input id={passwordId} type="password" required className="input" placeholder={placeholders.password} />
+        <input
+          id={passwordId}
+          ref={passwordRef}
+          name="password"
+          type="password"
+          required
+          className="input"
+          placeholder={placeholders.password}
+          onInput={checkPasswordsMatch}
+        />
+      </FormField>
+      <FormField label="Confirm Password" htmlFor={confirmPasswordId}>
+        <input
+          id={confirmPasswordId}
+          ref={confirmPasswordRef}
+          name="confirmPassword"
+          type="password"
+          required
+          className="input"
+          placeholder={placeholders.confirmPassword}
+          onInput={checkPasswordsMatch}
+        />
       </FormField>
       <Button type="submit" block className="auth-card__submit">
         {submitLabel}
@@ -64,14 +97,25 @@ function SignUpForm({ placeholders, submitLabel, onSubmit }) {
 export default function AuthPage() {
   const state = useApi(api.getAuthContent);
   const navigate = useNavigate();
+  const { signIn, signUp } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const mode = searchParams.get('mode') === SIGN_IN ? SIGN_IN : SIGN_UP;
+  const redirectTo = safeRedirectPath(searchParams.get(REDIRECT_PARAM));
 
-  const setMode = (nextMode) => setSearchParams(nextMode === SIGN_IN ? { mode: SIGN_IN } : {}, { replace: true });
+  // Switching tabs keeps the pending redirect so the user still lands where they were headed.
+  const setMode = (nextMode) => {
+    const params = {};
+    if (nextMode === SIGN_IN) params.mode = SIGN_IN;
+    if (redirectTo) params[REDIRECT_PARAM] = redirectTo;
+    setSearchParams(params, { replace: true });
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    navigate(ROUTES.projects);
+    const form = Object.fromEntries(new FormData(event.currentTarget));
+    if (mode === SIGN_IN) signIn({ email: form.email });
+    else signUp({ name: form.name, email: form.email });
+    navigate(redirectTo ?? ROUTES.projects, { replace: true });
   };
 
   return (

@@ -13,6 +13,19 @@ export function routeFor(target) {
   return ROUTES[target] ?? ROUTES.landing;
 }
 
+/** Query param on the auth page holding the path to return to after signing in. */
+export const REDIRECT_PARAM = 'next';
+
+/** Sign-in URL that returns the user to `path` once authenticated. */
+export function signInRedirect(path) {
+  return `${ROUTES.signIn}&${REDIRECT_PARAM}=${encodeURIComponent(path)}`;
+}
+
+/** Only follow same-app paths ("/projects"), never absolute or protocol-relative URLs. */
+export function safeRedirectPath(path) {
+  return path && path.startsWith('/') && !path.startsWith('//') ? path : null;
+}
+
 /** Landing page sections reachable from the top navigation bar. */
 export const LANDING_SECTIONS = [
   { id: 'how-it-works', label: 'How it works' },
@@ -25,7 +38,7 @@ export const MOBILE_NAV_ITEMS = [
   { label: 'Home', icon: 'home', to: ROUTES.landing },
   { label: 'Projects', icon: 'dns', to: ROUTES.projects },
   { label: 'New Project', icon: 'add_circle', to: ROUTES.newProject },
-  { label: 'Sign in', icon: 'group_add', to: ROUTES.signUp },
+  { label: 'Sign in', icon: 'group_add', to: ROUTES.signUp, guestOnly: true },
 ];
 
 /** Side navigation on the workspace (projects list) screen. Items without `to` are placeholders. */

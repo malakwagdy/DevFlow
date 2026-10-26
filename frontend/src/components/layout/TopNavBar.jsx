@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import Avatar from '../ui/Avatar';
+import { Link, useNavigate } from 'react-router-dom';
+import UserMenu from './UserMenu';
 import Button from '../ui/Button';
 import Icon from '../ui/Icon';
 import StatusDot from '../ui/StatusDot';
@@ -8,7 +8,13 @@ import { LANDING_SECTIONS, ROUTES } from '../../config/navigation';
 import { useSession } from '../../context/SessionContext';
 
 export default function TopNavBar() {
-  const { user, workspace } = useSession();
+  const { isAuthenticated, workspace, signOut } = useSession();
+  const navigate = useNavigate();
+
+  const handleSignOut = () => {
+    signOut();
+    navigate(ROUTES.landing);
+  };
 
   return (
     <header className="topnav">
@@ -28,10 +34,12 @@ export default function TopNavBar() {
         </div>
 
         <div className="topnav__right">
-          <div className="workspace-pill">
-            <StatusDot tone="tertiary" size="md" />
-            <span className="workspace-pill__name">{workspace?.slug ?? '…'}</span>
-          </div>
+          {isAuthenticated && (
+            <div className="workspace-pill">
+              <StatusDot tone="tertiary" size="md" />
+              <span className="workspace-pill__name">{workspace?.slug ?? '…'}</span>
+            </div>
+          )}
           <ThemeToggle />
           <Button variant="secondary" size="sm" icon="dns" to={ROUTES.projects} className="hide-below-lg">
             My Projects
@@ -39,10 +47,16 @@ export default function TopNavBar() {
           <Button size="sm" icon="add" to={ROUTES.newProject} className="hide-below-lg">
             Create New Project
           </Button>
-          <Link to={ROUTES.signIn} className="topnav__signin">
-            Sign In
-          </Link>
-          <Avatar as={Link} to={ROUTES.signUp} initials={user?.initials ?? ''} title="User profile / team" />
+          {isAuthenticated ? (
+            <button type="button" className="topnav__signin" onClick={handleSignOut}>
+              Sign Out
+            </button>
+          ) : (
+            <Link to={ROUTES.signIn} className="topnav__signin">
+              Sign In
+            </Link>
+          )}
+          <UserMenu />
         </div>
       </div>
     </header>
